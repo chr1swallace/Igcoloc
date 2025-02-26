@@ -52,7 +52,7 @@ rfiles1=combs.map do |c| region_files[c[0]] end
 rfiles2=combs.map do |c| region_files[c[1]] end
 outfiles.each_with_index do |f,i|
   file outfiles[i] do |t| 
-    qfile_.puts "Rscript ig-coloc.R --args infiles=\"#{infiles1[i]},#{infiles2[i]}\" iregions=\"#{rfiles1[0]},#{rfiles2[i]}\" names=\"#{keycombs[i].join(',')}\" outfile=#{outfiles[i]} outplot=#{outplots[i]}"
+    qfile_.puts "./ig-coloc.R --args infiles=\"#{infiles1[i]},#{infiles2[i]}\" iregions=\"#{rfiles1[0]},#{rfiles2[i]}\" names=\"#{keycombs[i].join(',')}\" outfile=#{outfiles[i]} outplot=#{outplots[i]} > data/logs/#{File.basename(outfiles[i],'.csv')}.log 2>&1"
   end
 end 
 
@@ -63,8 +63,23 @@ task :coloc => outfiles do
 end
 
 ## * disease coloc
-disease_files=""
 
+disease_files=Dir.glob("/rds/project/who1000/rds-who1000-wgs10k/analysis/pid/common_variant_analysis/serum_ig_pipeline/resources/harmonised_gwas/*.gz").grep_v(/iga|igg|igm/)
+disease_files.each do |f|
+  inp.each do |k,v|
+    outfile="data/coloc_#{File.basename(f,'.tsv.gz')}_#{k}.csv"
+    outplot="data/coloc_#{File.basename(f,'.tsv.gz')}_#{k}.pdf"
+    task :dcoloc => outfile
+    file outfile do
+      qfile_.puts "Rscript disease-coloc.R --args ig=#{k} rfile=data/#{k}.regions igfile=#{v} diseasefile=#{f} outfile=#{outfile} outplot=#{outplot} > data/logs/#{File.basename(outfile,'.csv')}.log 2>&1"
+    end
+  end
+end
+
+task :dcoloc => disease_files do
+  qrun=true
+  qstr+=" -j dcoloc -t 00:59:00 "
+end
 
 ## * run    
 
